@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd
+        http://www.springframework.org/schema/mvc
+        http://www.springframework.org/schema/mvc/spring-mvc.xsd
+        http://www.springframework.org/schema/util
+        http://www.springframework.org/schema/util/spring-util.xsd">
+
+  <!--<context:component-scan base-package="com.blgd.report"/>-->
+  <!-- 自动注册 DefaultAnnotationHandlerMapping 与 AnnotationMethodHandlerAdapter -->
+  <!-- 这两个bean是spring MVC 为 @Controllers 分发请求所必须的。 -->
+  <!-- 启用SpringMVC的注解功能,它会自动注册HandlerMapping、HandlerAdapter、ExceptionResolver的相关实例 -->
+  <mvc:annotation-driven />
+
+  <!-- 扫描controller（controller层注入） -->
+  <context:component-scan base-package="com.ych.controller">
+    <context:include-filter type="annotation" expression="org.springframework.stereotype.Controller" />
+  </context:component-scan>
+
+  <!-- 静态资源(js、image等)的访问 -->
+<!--  <mvc:resources mapping="/css/**" location="/WEB-INF/css/" />
+  <mvc:resources mapping="/js/**" location="/WEB-INF/js/" />-->
+  <mvc:default-servlet-handler/>
+
+  <!-- 避免IE在ajax请求时，返回json出现下载 -->
+  <bean id="mappingJacksonHttpMessageConverter" class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter">
+    <property name="supportedMediaTypes">
+      <list>
+        <value>text/html;charset=UTF-8</value>
+        <value>application/json;charset=UTF-8</value>
+      </list>
+    </property>
+  </bean>
+  <bean class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter">
+    <property name="messageConverters">
+      <util:list id="beanList">
+        <ref bean="mappingJacksonHttpMessageConverter" />
+      </util:list>
+    </property>
+  </bean>
+
+
+
+  <!--ViewResolver 视图解析器-->
+  <!--用于支持Servlet、JSP视图解析-->
+  <bean id="jspViewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+    <property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+    <property name="prefix" value="/WEB-INF/pages/"/>
+    <property name="suffix" value=".jsp"/>
+  </bean>
+
+  <!-- 支持上传文件 -->
+  <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+    <!-- set the max upload size100MB -->
+    <property name="maxUploadSize">
+      <value>104857600</value>
+    </property>
+    <property name="maxInMemorySize">
+      <value>4096</value>
+    </property>
+  </bean>
+
+</beans>

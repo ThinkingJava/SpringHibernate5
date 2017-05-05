@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+  <context:annotation-config />
+  <context:component-scan base-package="com.ych">
+    <!-- 过滤控制器包，防止重复扫描，后面配置的扫描包不起作用 -->
+    <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller" />
+  </context:component-scan>
+
+  <context:property-placeholder location="classpath:conn.properties"/>
+
+  <!-- datasource 数据源配置 -->
+  <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" destroy-method="close">
+    <property name="driverClassName" value="${jdbc.driver}" />
+    <property name="url" value="${jdbc.url}" />
+    <property name="username" value="${jdbc.username}" />
+    <property name="password" value="${jdbc.password}" />
+    <!-- 初始化连接大小 -->
+    <property name="initialSize" value="${jdbc.initialSize}" />
+    <!-- 连接池最小空闲 -->
+    <property name="minIdle" value="${jdbc.minIdle}" />
+    <property name="maxIdle" value="${jdbc.maxIdle}" />
+    <!-- 连接池最大使用连接数量 -->
+    <property name="maxActive" value="${jdbc.maxActive}" />
+    <!-- 获取连接最大等待时间 -->
+    <property name="maxWait" value="${jdbc.maxWait}" />
+    <property name="defaultAutoCommit" value="${jdbc.defaultAutoCommit}" />
+    <property name="removeAbandoned" value="${jdbc.removeAbandoned}" />
+    <property name="removeAbandonedTimeout" value="${jdbc.removeAbandonedTimeout}" />
+    <property name="timeBetweenEvictionRunsMillis" value="${jdbc.timeBetweenEvictionRunsMillis}" />
+    <property name="numTestsPerEvictionRun" value="${jdbc.numTestsPerEvictionRun}" />
+    <property name="minEvictableIdleTimeMillis" value="${jdbc.minEvictableIdleTimeMillis}" />
+    <property name="testOnBorrow" value="false" />
+    <property name="testOnReturn" value="false" />
+    <!--申请连接的时候检测，如果空闲时间大于timeBetweenEvictionRunsMillis，执行validationQuery检测连接是否有效。-->
+    <property name="testWhileIdle" value="true" />
+    <!-- 开启Druid的监控统计功能 -->
+    <property name="filters" value="stat" />
+    <!-- 验证连接有效与否的SQL，不同的数据配置不同 -->
+    <property name="validationQuery" value="select 1 " />
+    <!--使用非公平锁-->
+    <property name="useUnfairLock" value="true"/>
+  </bean>
+
+  <!-- session 对话层配置 -->
+  <bean id="sessionFactory" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+    <property name="dataSource" ref="dataSource" />
+
+    <property name="packagesToScan">
+      <list>
+        <value>com.ych.entity</value>
+      </list>
+    </property>
+
+    <property name="hibernateProperties">
+      <props>
+        <prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl.auto}</prop>
+        <prop key="hibernate.dialect">${hibernate.dialect}</prop>
+        <prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+        <prop key="hibernate.format_sql">${hibernate.format_sql}</prop>
+        <!-- 强制Hibernate按照被更新数据的主键，为SQL更新排序。这么做将减少在高并发系统中事务的死锁。 取值 true | false -->
+        <prop key="hibernate.order_updates">${hibernate.order_updates}</prop>
+        <!-- 如果开启, Hibernate将收集有助于性能调节的统计数据.取值true|false -->
+        <prop key="hibernate.generate_statistics">${hibernate.generate_statistics}</prop>
+      </props>
+    </property>
+  </bean>
+
+  <!-- 配置Hibernate事务管理器 -->
+  <bean id="transactionManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+    <property name="sessionFactory" ref="sessionFactory" />
+  </bean>
+  <!-- 通过注解方式管理事务 @Transactional -->
+  <tx:advice id="advice" transaction-manager="transactionManager">
+    <tx:attributes>
+      <tx:method name="save*" propagation="REQUIRED" />
+      <tx:method name="add*" propagation="REQUIRED" />
+      <tx:method name="create*" propagation="REQUIRED" />
+      <tx:method name="insert*" propagation="REQUIRED" />
+      <tx:method name="update*" propagation="REQUIRED" />
+      <tx:method name="merge*" propagation="REQUIRED" />
+      <tx:method name="del*" propagation="REQUIRED" />
+      <tx:method name="remove*" propagation="REQUIRED" />
+      <tx:method name="put*" propagation="REQUIRED" />
+      <tx:method name="use*" propagation="REQUIRED" />
+      <tx:method name="recordOperLog" propagation="REQUIRED" />
+      <!--hibernate4必须配置为开启事务 否则 getCurrentSession()获取不到 -->
+      <tx:method name="get*" propagation="REQUIRED" read-only="true" />
+      <tx:method name="count*" propagation="REQUIRED" read-only="true" />
+      <tx:method name="find*" propagation="REQUIRED" read-only="true" />
+      <tx:method name="list*" propagation="REQUIRED" read-only="true" />
+      <tx:method name="*" read-only="true" />
+    </tx:attributes>
+  </tx:advice>
+
+  <aop:config>
+    <!-- 配置哪些包的类要切入事务 -->
+    <aop:pointcut id="pointcut" expression="execution(* com.ych.service.impl.*.*(..))" />
+
+    <aop:advisor advice-ref="advice" pointcut-ref="pointcut"/><!-- 连接了上面的advice和上面的pointcut -->
+
+    <!-- 出现一个很奇怪的问题，aop:pointcut要写在aop:advisor上面，否则会报错 -->
+    <!-- 	<aop:advisor advice-ref="advice" pointcut-ref="pointcut" order="2" /> -->
+    <!-- 关键配置，切换数据源一定要比持久层代码更先执行（事务也算持久层代码） -->
+ <!--   <aop:advisor advice-ref="advice" pointcut-ref="pointcut" order="1"/>-->
+
+  </aop:config>
+
+</beans>
